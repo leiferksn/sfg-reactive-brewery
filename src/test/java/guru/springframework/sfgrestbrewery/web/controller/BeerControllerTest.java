@@ -60,7 +60,7 @@ public class BeerControllerTest {
     @Test
     void shouldGetAllBeers() {
 
-        given(beerService.listBeers(any(), any(), any(), any())).willReturn(new BeerPagedList(List.of(validBeer)));
+        given(beerService.listBeers(any(), any(), any(), any())).willReturn(Mono.just(new BeerPagedList(List.of(validBeer))));
 
         webTestClient.get()
                 .uri("/api/v1/beer")

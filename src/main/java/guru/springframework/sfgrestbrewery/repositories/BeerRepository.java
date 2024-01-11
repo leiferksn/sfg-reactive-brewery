@@ -14,5 +14,12 @@ public interface BeerRepository extends ReactiveCrudRepository<Beer, Integer> {
 //
 //    Page<Beer> findAllByBeerNameAndBeerStyle(String beerName, BeerStyleEnum beerStyle, Pageable pageable);
 
+    // do not work at the moment, but may in the future
+    //    Flux<Page<Beer>> findAllByBeerName(String beerName, Pageable pageable);
+//
+//    Flux<Page<Beer>> findAllByBeerStyle(BeerStyleEnum beerStyle, Pageable pageable);
+//
+//    Flux<Page<Beer>> findAllByBeerNameAndBeerStyle(String beerName, BeerStyleEnum beerStyle, Pageable pageable);
+
     Mono<Beer> findByUpc(String upc);
 }
