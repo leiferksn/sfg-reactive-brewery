@@ -4,6 +4,7 @@ package guru.springframework.sfgrestbrewery.web.controller;
 import guru.springframework.sfgrestbrewery.bootstrap.BeerLoader;
 import guru.springframework.sfgrestbrewery.services.BeerService;
 import guru.springframework.sfgrestbrewery.web.model.BeerDto;
+import guru.springframework.sfgrestbrewery.web.model.BeerPagedList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -50,6 +52,35 @@ public class BeerControllerTest {
                 .expectStatus().isOk()
                 .expectBody(BeerDto.class)
                 .value(beerDto -> beerDto.getBeerName(), equalTo(validBeer.getBeerName()));
+    }
+
+    @Test
+    void shouldGetAllBeers() {
+
+        given(beerService.listBeers(any(), any(), any(), any())).willReturn(new BeerPagedList(List.of(validBeer)));
+
+        webTestClient.get()
+                .uri("/api/v1/beer")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(BeerPagedList.class)
+                .value(beerDtos -> beerDtos.getSize(), equalTo(1));
+    }
+
+    @Test
+    void shouldGetBeerByUpc() {
+        final var upc = BeerLoader.BEER_1_UPC;
+        given(beerService.getByUpc(upc)).willReturn(validBeer);
+
+        webTestClient.get()
+                .uri("/api/v1/beerUpc/" + upc)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(BeerDto.class)
+                .value(beerDto -> beerDto.getUpc(), equalTo(upc));
+
     }
 
 }
