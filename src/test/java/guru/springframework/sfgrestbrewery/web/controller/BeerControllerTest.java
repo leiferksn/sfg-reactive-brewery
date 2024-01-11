@@ -16,14 +16,13 @@ import org.springframework.web.reactive.function.BodyInserters;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 
-@WebFluxTest(BeerController.class)
+@WebFluxTest(value = BeerController.class)
 public class BeerControllerTest {
 
     @Autowired
@@ -31,6 +30,7 @@ public class BeerControllerTest {
 
     @MockBean
     private BeerService beerService;
+
 
     BeerDto validBeer;
 
@@ -45,7 +45,7 @@ public class BeerControllerTest {
 
     @Test
     void shouldGetABeerById() {
-        UUID beerId = UUID.randomUUID();
+        Integer beerId = 1;
         given(beerService.getById(any(), any())).willReturn(Mono.just(validBeer));
 
         webTestClient.get()
