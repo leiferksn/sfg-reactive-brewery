@@ -125,9 +125,7 @@ public class BeerControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(beerToUpdate))
                 .exchange()
-                .expectStatus().isNoContent()
-                .expectBody(BeerDto.class)
-                .value(beerDto -> beerDto.getBeerName(), equalTo(validBeer.getBeerName() + ":updated"));
+                .expectStatus().isNoContent();
     }
 
     @Test
