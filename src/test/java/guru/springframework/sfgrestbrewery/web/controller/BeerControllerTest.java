@@ -96,7 +96,7 @@ public class BeerControllerTest {
                 .beerStyle(validBeer.getBeerStyle())
                 .upc(validBeer.getUpc())
                 .build();
-        given(beerService.saveNewBeer(validBeer)).willReturn(createdBear);
+        given(beerService.saveNewBeer(validBeer)).willReturn(Mono.just(createdBear));
 
         webTestClient.post()
                 .uri("/api/v1/beer")
