@@ -4,6 +4,7 @@ beer_name varchar2(255),
 beer_style varchar2(255),
 upc varchar2(25),
 quantity_on_hand integer,
+version integer,
 price decimal,
 created_date timestamp,
 last_modified_date timestamp

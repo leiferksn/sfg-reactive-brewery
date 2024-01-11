@@ -10,11 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +46,7 @@ public class BeerControllerTest {
     @Test
     void shouldGetABeerById() {
         UUID beerId = UUID.randomUUID();
-        given(beerService.getById(any(), any())).willReturn(validBeer);
+        given(beerService.getById(any(), any())).willReturn(Mono.just(validBeer));
 
         webTestClient.get()
                 .uri("/api/v1/beer/" + beerId)
@@ -75,7 +74,7 @@ public class BeerControllerTest {
     @Test
     void shouldGetBeerByUpc() {
         final var upc = BeerLoader.BEER_1_UPC;
-        given(beerService.getByUpc(upc)).willReturn(validBeer);
+        given(beerService.getByUpc(upc)).willReturn(Mono.just(validBeer));
 
         webTestClient.get()
                 .uri("/api/v1/beerUpc/" + upc)
@@ -89,9 +88,9 @@ public class BeerControllerTest {
 
     @Test
     void shouldCreateNewBeer() {
-        final var uuidCreatedBeer = UUID.randomUUID();
+        final var idCreatedBeer = 1;
         final var createdBear = BeerDto.builder()
-                .id(uuidCreatedBeer)
+                .id(idCreatedBeer)
                 .price(validBeer.getPrice())
                 .beerName(validBeer.getBeerName())
                 .beerStyle(validBeer.getBeerStyle())
@@ -106,7 +105,7 @@ public class BeerControllerTest {
                 .exchange()
                 .expectStatus().isCreated()
                 .expectHeader()
-                .value("Location", equalTo("http://api.springframework.guru/api/v1/beer/" + uuidCreatedBeer));
+                .value("Location", equalTo("http://api.springframework.guru/api/v1/beer/" + idCreatedBeer));
     }
 
     @Test
@@ -130,11 +129,11 @@ public class BeerControllerTest {
 
     @Test
     void shouldDeleteBeer() {
-        final var uuidBeerToDelete = UUID.randomUUID();
-        doNothing().when(beerService).deleteBeerById(uuidBeerToDelete);
+        final var idBeerToDelete = 1;
+        doNothing().when(beerService).deleteBeerById(idBeerToDelete);
 
         webTestClient.delete()
-                .uri("/api/v1/beer/" + uuidBeerToDelete)
+                .uri("/api/v1/beer/" + idBeerToDelete)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isNoContent();
