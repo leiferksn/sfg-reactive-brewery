@@ -169,4 +169,79 @@ public class WebClientIT {
         countDownLatch.await(1000, TimeUnit.MILLISECONDS);
         assertThat(countDownLatch.getCount()).isEqualTo(0);
     }
+
+    @Test
+    void testShouldUpdateBeer() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        BeerDto beerDto = BeerDto.builder()
+                .beerName("New Beer:UPDATED")
+                .upc("123")
+                .beerStyle("PALE_ALE")
+                .price(new BigDecimal(12.34))
+                .build();
+
+        final var beerResponseMono = webClient.put().uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/beer/" + 1)
+                        .build())
+                .body(BodyInserters.fromValue(beerDto))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve().toBodilessEntity();
+
+
+        beerResponseMono.publishOn(Schedulers.parallel()).subscribe(responseEntity -> {
+            assertThat(responseEntity.getStatusCode().is2xxSuccessful());
+            countDownLatch.countDown();
+        });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void shouldUpdateTheFirstBeerInTheList() throws InterruptedException {
+
+        CountDownLatch countDownLatch = new CountDownLatch(3);
+
+        webClient.get().uri("/api/v1/beer")
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(BeerPagedList.class)
+                .publishOn(Schedulers.single())
+                .subscribe(pagedList -> {
+                    countDownLatch.countDown();
+
+                    // get existing beer
+
+                    final var existingBeer = pagedList.getContent().get(0);
+
+                    final var beerToUpdate = BeerDto.builder()
+                            .price(existingBeer.getPrice())
+                            .beerName(existingBeer.getBeerName() + ":updated")
+                            .beerStyle(existingBeer.getBeerStyle())
+                            .upc(existingBeer.getUpc())
+                            .build();
+
+                    // update existing beer
+                    webClient.put().uri("/api/v1/beer/" + existingBeer.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(BodyInserters.fromValue(beerToUpdate))
+                            .retrieve()
+                            .toBodilessEntity()
+                            .flatMap(responseEntity -> {
+
+                                countDownLatch.countDown();
+                                return webClient.get().uri("/api/v1/beer/" + existingBeer.getId() )
+                                        .accept(MediaType.APPLICATION_JSON)
+                                        .retrieve()
+                                        .bodyToMono(BeerDto.class);
+                            }).subscribe(updatedBeer -> {
+                                assertThat(updatedBeer.getBeerName()).isEqualTo(existingBeer.getBeerName() + ":updated");
+                                countDownLatch.countDown();
+                            });
+                });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
 }

@@ -110,17 +110,17 @@ public class BeerControllerTest {
 
     @Test
     void shouldUpdateBeer() {
-        final var uuidUpdatedBeer = UUID.randomUUID();
+        final var idUpdatedBeer = 1;
         final var beerToUpdate = BeerDto.builder()
                 .price(validBeer.getPrice())
                 .beerName(validBeer.getBeerName() + ":updated")
                 .beerStyle(validBeer.getBeerStyle())
                 .upc(validBeer.getUpc())
                 .build();
-        given(beerService.updateBeer(uuidUpdatedBeer, beerToUpdate)).willReturn(beerToUpdate);
+        given(beerService.updateBeer(idUpdatedBeer, beerToUpdate)).willReturn(Mono.just(beerToUpdate));
 
         webTestClient.put()
-                .uri("/api/v1/beer/" + uuidUpdatedBeer)
+                .uri("/api/v1/beer/" + idUpdatedBeer)
                 .accept(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(beerToUpdate))
                 .exchange()
