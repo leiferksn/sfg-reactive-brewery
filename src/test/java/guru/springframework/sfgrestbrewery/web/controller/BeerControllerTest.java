@@ -10,8 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.BodyInserters;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +22,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
 
 @WebFluxTest(BeerController.class)
 public class BeerControllerTest {
@@ -81,6 +85,61 @@ public class BeerControllerTest {
                 .expectBody(BeerDto.class)
                 .value(beerDto -> beerDto.getUpc(), equalTo(upc));
 
+    }
+
+    @Test
+    void shouldCreateNewBeer() {
+        final var uuidCreatedBeer = UUID.randomUUID();
+        final var createdBear = BeerDto.builder()
+                .id(uuidCreatedBeer)
+                .price(validBeer.getPrice())
+                .beerName(validBeer.getBeerName())
+                .beerStyle(validBeer.getBeerStyle())
+                .upc(validBeer.getUpc())
+                .build();
+        given(beerService.saveNewBeer(validBeer)).willReturn(createdBear);
+
+        webTestClient.post()
+                .uri("/api/v1/beer")
+                .accept(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(validBeer))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectHeader()
+                .value("Location", equalTo("http://api.springframework.guru/api/v1/beer/" + uuidCreatedBeer));
+    }
+
+    @Test
+    void shouldUpdateBeer() {
+        final var uuidUpdatedBeer = UUID.randomUUID();
+        final var beerToUpdate = BeerDto.builder()
+                .price(validBeer.getPrice())
+                .beerName(validBeer.getBeerName() + ":updated")
+                .beerStyle(validBeer.getBeerStyle())
+                .upc(validBeer.getUpc())
+                .build();
+        given(beerService.updateBeer(uuidUpdatedBeer, beerToUpdate)).willReturn(beerToUpdate);
+
+        webTestClient.put()
+                .uri("/api/v1/beer/" + uuidUpdatedBeer)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(beerToUpdate))
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody(BeerDto.class)
+                .value(beerDto -> beerDto.getBeerName(), equalTo(validBeer.getBeerName() + ":updated"));
+    }
+
+    @Test
+    void shouldDeleteBeer() {
+        final var uuidBeerToDelete = UUID.randomUUID();
+        doNothing().when(beerService).deleteBeerById(uuidBeerToDelete);
+
+        webTestClient.delete()
+                .uri("/api/v1/beer/" + uuidBeerToDelete)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isNoContent();
     }
 
 }
