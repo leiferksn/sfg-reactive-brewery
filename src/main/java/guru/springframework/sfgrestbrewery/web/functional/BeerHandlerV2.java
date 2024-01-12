@@ -1,6 +1,8 @@
 package guru.springframework.sfgrestbrewery.web.functional;
 
 import guru.springframework.sfgrestbrewery.services.BeerService;
+import guru.springframework.sfgrestbrewery.web.controller.NotFoundException;
+import guru.springframework.sfgrestbrewery.web.mappers.BeerMapper;
 import guru.springframework.sfgrestbrewery.web.model.BeerDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class BeerHandlerV2 {
+    private final BeerMapper beerMapper;
 
     private final BeerService beerService;
     private final Validator validator;
@@ -43,6 +46,30 @@ public class BeerHandlerV2 {
                 .flatMap(beerDto ->  {
                     return ServerResponse.ok().header("Location", BeerRouterConfig.BEER_V2_URL + "/" + beerDto.getId()).build();
                 });
+    }
+
+    public Mono<ServerResponse> updateBeer(ServerRequest serverRequest) {
+        return serverRequest.bodyToMono(BeerDto.class).doOnNext(this::validate)
+                .flatMap(beerDto -> {
+                    return beerService.updateBeer(Integer.valueOf(serverRequest.pathVariable("beerId")), beerDto);
+                }).flatMap(savedBeerDto -> {
+                    if (savedBeerDto.getId() != null) {
+                        log.debug("Saved Beer Id: {}", savedBeerDto.getId());
+                        return ServerResponse.noContent().build();
+                    } else {
+                        log.debug("Beer Id: {} Not Found", serverRequest.pathVariable("beerId"));
+                        return ServerResponse.notFound().build();
+                    }
+                });
+    }
+
+    public Mono<ServerResponse> deleteBeer(ServerRequest serverRequest) {
+        final var beerId = Integer.valueOf(serverRequest.pathVariable("beerId"));
+
+        return beerService.reactiveDeleteBeerId(beerId)
+                .flatMap(voidMono -> {
+                    return ServerResponse.notFound().build();
+                }).onErrorResume(e -> e instanceof NotFoundException, e -> ServerResponse.notFound().build());
     }
 
     private void validate(BeerDto beerDto) {

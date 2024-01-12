@@ -21,6 +21,8 @@ public class BeerRouterConfig {
         return route().GET(BEER_V2_URL_BEER_ID, accept(MediaType.APPLICATION_JSON), handler::beerById)
                 .GET(BEER_V2_URL_UPC, accept(MediaType.APPLICATION_JSON), handler::beerByUpc)
                 .POST(BEER_V2_URL, accept(MediaType.APPLICATION_JSON), handler::newBeer)
+                .PUT(BEER_V2_URL_BEER_ID, accept(MediaType.APPLICATION_JSON), handler::updateBeer)
+                .DELETE(BEER_V2_URL_BEER_ID, accept(MediaType.APPLICATION_JSON), handler::deleteBeer)
                 .build();
     }
 

@@ -63,7 +63,7 @@ public class WebClientV2IT {
     void shouldGetBeerByUpc() throws InterruptedException {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
-        Mono<BeerDto> beerDtoMono = webClient.get().uri(uriBuilder -> uriBuilder.path(BEER_V2_URL_UPC).build(BeerLoader.BEER_7_UPC))
+        Mono<BeerDto> beerDtoMono = webClient.get().uri(uriBuilder -> uriBuilder.path(BEER_V2_URL_UPC).build(BeerLoader.BEER_3_UPC))
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve().bodyToMono(BeerDto.class);
 
@@ -168,6 +168,123 @@ public class WebClientV2IT {
         assertThat(countDownLatch.getCount()).isEqualTo(0);
     }
 
+    @Test
+    void shouldUpdateBeer() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+
+        BeerDto beerDto = BeerDto.builder()
+                .beerName("New Beer:UPDATED")
+                .upc("123")
+                .beerStyle("PALE_ALE")
+                .price(new BigDecimal(12.34))
+                .build();
+
+        webClient.put().uri(uriBuilder -> uriBuilder
+                        .path(BEER_V2_URL_BEER_ID)
+                        .build(7))
+                .body(BodyInserters.fromValue(beerDto))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .toBodilessEntity()
+                .subscribe(responseEntity -> {
+                    assertThat(responseEntity.getStatusCode().is2xxSuccessful());
+                    countDownLatch.countDown();
+                });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+
+        webClient.get().uri(uriBuilder -> uriBuilder.path(BEER_V2_URL_BEER_ID).build(7))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(BeerDto.class)
+                .publishOn(Schedulers.single())
+                .subscribe(updatedBeerDto -> {
+                    assertThat(updatedBeerDto).isNotNull();
+                    assertThat(updatedBeerDto.getBeerName()).isEqualTo("New Beer:UPDATED");
+                    countDownLatch.countDown();
+                });
+
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void shouldUpdateBeerNotFound() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        BeerDto beerDto = BeerDto.builder()
+                .beerName("New Beer:UPDATED")
+                .upc("123")
+                .beerStyle("PALE_ALE")
+                .price(new BigDecimal(12.34))
+                .build();
+
+        final var beerResponseMono = webClient.put().uri(uriBuilder -> uriBuilder
+                        .path(BEER_V2_URL_BEER_ID)
+                        .build(1237))
+                .body(BodyInserters.fromValue(beerDto))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve().toBodilessEntity();
+
+
+        beerResponseMono.publishOn(Schedulers.parallel()).subscribe(responseEntity -> {
+
+                }, throwable -> {
+                    countDownLatch.countDown();
+                }
+        );
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testShouldDeleteBeer() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+
+        webClient.delete().uri(uriBuilder -> uriBuilder.path(BEER_V2_URL_BEER_ID).build(10))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .toBodilessEntity()
+                .flatMap(responseEntity -> {
+                    countDownLatch.countDown();
+                    return webClient.get().uri(uriBuilder -> uriBuilder.path(BEER_V2_URL_BEER_ID).build(10))
+                            .accept(MediaType.APPLICATION_JSON)
+                            .retrieve()
+                            .bodyToMono(BeerDto.class);
+                }).subscribe(deletedDto -> {
+
+                }, throwable -> {
+                    countDownLatch.countDown();
+                });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testShouldDeleteBeerNotFound() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        webClient.delete().uri(uriBuilder -> uriBuilder.path(BEER_V2_URL_BEER_ID).build(1200))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .toBodilessEntity()
+                .flatMap(responseEntity -> {
+                    return Mono.just(responseEntity.getStatusCode());
+                })
+                .subscribe(code -> {
+                    // TODO: why am I not able to test for the status code?!!
+                    countDownLatch.countDown();
+                    assertThat(code.is4xxClientError());
+                }, throwable -> {
+                    countDownLatch.countDown();
+                });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
 
 
 }
