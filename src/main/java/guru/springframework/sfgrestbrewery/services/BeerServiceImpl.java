@@ -16,6 +16,7 @@ import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
@@ -122,7 +123,12 @@ public class BeerServiceImpl implements BeerService {
     @Override
     public Mono<Void> reactiveDeleteBeerId(Integer beerId) {
         return beerRepository.findById(beerId)
-                // findById throws NotFoundException first... that's why the test calls the throwable consumer
+                // maybe findById throws NotFoundException first... that's why the test calls the throwable consumer
+                .onErrorResume(e -> e instanceof Exception,
+                        e -> {
+                    System.out.println("BOO!" + e);
+                    return Mono.empty();
+                        })
                 .switchIfEmpty(Mono.error(new NotFoundException()))
                 .map(beer -> {
                     return beer.getId();

@@ -278,8 +278,6 @@ public class WebClientV2IT {
                     // TODO: why am I not able to test for the status code?!!
                     countDownLatch.countDown();
                     assertThat(code.is4xxClientError());
-                }, throwable -> {
-                    countDownLatch.countDown();
                 });
 
         countDownLatch.await(1000, TimeUnit.MILLISECONDS);
