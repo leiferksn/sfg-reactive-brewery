@@ -6,10 +6,12 @@ import guru.springframework.sfgrestbrewery.web.model.BeerPagedList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -43,9 +45,10 @@ public class WebClientIT {
     void shouldGetBeerByUpc() throws InterruptedException {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
-        Mono<BeerDto> beerDtoMono = webClient.get().uri("api/v1/beerUpc/" + BeerLoader.BEER_1_UPC)
+        Mono<BeerDto> beerDtoMono = webClient.get().uri("api/v1/beerUpc/" + BeerLoader.BEER_3_UPC)
                 .accept(MediaType.APPLICATION_JSON)
-                .retrieve().bodyToMono(BeerDto.class);
+                .retrieve()
+                .bodyToMono(BeerDto.class);
 
         beerDtoMono.subscribe(beerDto -> {
             assertThat(beerDto).isNotNull();
@@ -62,7 +65,7 @@ public class WebClientIT {
     void shouldGetBeerById() throws InterruptedException {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
-        Mono<BeerDto> beerDtoMono = webClient.get().uri("api/v1/beer/1")
+        Mono<BeerDto> beerDtoMono = webClient.get().uri("api/v1/beer/5")
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve().bodyToMono(BeerDto.class);
 
@@ -182,7 +185,7 @@ public class WebClientIT {
                 .build();
 
         final var beerResponseMono = webClient.put().uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/beer/" + 1)
+                        .path("/api/v1/beer/" + 7)
                         .build())
                 .body(BodyInserters.fromValue(beerDto))
                 .accept(MediaType.APPLICATION_JSON)
@@ -238,6 +241,78 @@ public class WebClientIT {
                             }).subscribe(updatedBeer -> {
                                 assertThat(updatedBeer.getBeerName()).isEqualTo(existingBeer.getBeerName() + ":updated");
                                 countDownLatch.countDown();
+                            });
+                });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testShouldReturnNotFound() throws InterruptedException {
+
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+
+        final var beerToUpdate = BeerDto.builder()
+                .price(new BigDecimal(23.2))
+                .beerName("NOT FOUND")
+                .beerStyle("PALE_ALE")
+                .upc("uh oh")
+                .build();
+
+        webClient.put().uri("/api/v1/beer/" + 200)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(beerToUpdate))
+                .retrieve()
+                .toBodilessEntity()
+                .subscribe(responseEntity -> {
+
+                }, throwable -> {
+                    if (throwable instanceof WebClientResponseException) {
+                        final var ex = (WebClientResponseException)throwable;
+
+                        if (ex.getStatusCode().equals(HttpStatus.NOT_FOUND)) {
+                            countDownLatch.countDown();
+                        }
+                    }
+                });
+
+        countDownLatch.countDown();;
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testShouldDeleteBeer() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(3);
+
+        webClient.get().uri("/api/v1/beer")
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(BeerPagedList.class)
+                .publishOn(Schedulers.single())
+                .subscribe(beerList -> {
+                    countDownLatch.countDown();
+
+
+                    final var beerToDelete = beerList.getContent().get(0);
+
+                    webClient.delete().uri("/api/v1/beer/" + beerToDelete.getId() )
+                            .accept(MediaType.APPLICATION_JSON)
+                            .retrieve()
+                            .toBodilessEntity()
+                            .flatMap(responseEntity -> {
+
+                                countDownLatch.countDown();
+
+                                return webClient.get().uri("/api/v1/beer/" + beerToDelete.getId())
+                                        .accept(MediaType.APPLICATION_JSON)
+                                        .retrieve()
+                                        .bodyToMono(BeerDto.class);
+                            }).subscribe(deletedDto -> {
+
+                            }, throwable -> {
+                              countDownLatch.countDown();
                             });
                 });
 

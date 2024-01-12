@@ -6,6 +6,7 @@ import guru.springframework.sfgrestbrewery.web.model.BeerPagedList;
 import guru.springframework.sfgrestbrewery.web.model.BeerStyleEnum;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.relational.core.sql.Not;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +14,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Created by jt on 2019-04-20.
@@ -50,6 +53,11 @@ public class BeerController {
         return ResponseEntity.ok(beerService.listBeers(beerName, beerStyle, PageRequest.of(pageNumber, pageSize), showInventoryOnHand));
     }
 
+    @ExceptionHandler
+    ResponseEntity<Void> handleNotFound(NotFoundException ex) {
+        return ResponseEntity.notFound().build();
+    }
+
     @GetMapping("beer/{beerId}")
     public ResponseEntity<Mono<BeerDto>> getBeerById(@PathVariable("beerId") Integer beerId,
                                                      @RequestParam(value = "showInventoryOnHand", required = false) Boolean showInventoryOnHand) {
@@ -57,7 +65,11 @@ public class BeerController {
             showInventoryOnHand = false;
         }
 
-        return ResponseEntity.ok(beerService.getById(beerId, showInventoryOnHand));
+        return ResponseEntity.ok(beerService.getById(beerId, showInventoryOnHand).defaultIfEmpty(BeerDto.builder().build()).doOnNext(beerDto -> {
+            if (beerDto.getId() == null) {
+                throw new NotFoundException();
+            }
+        }));
     }
 
     @GetMapping("beerUpc/{upc}")
@@ -79,9 +91,19 @@ public class BeerController {
 
     @PutMapping("beer/{beerId}")
     public ResponseEntity<Void> updateBeerById(@PathVariable("beerId") Integer beerId, @RequestBody @Validated BeerDto beerDto) {
-        beerService.updateBeer(beerId, beerDto).subscribe();
+        final var updatedId = new AtomicBoolean(false);
+        beerService.updateBeer(beerId, beerDto).subscribe(updatedDto ->
+        {
+            if (updatedDto.getId() != null) {
+                updatedId.set(true);
+            }
+        });
+        if (updatedId.get()) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
 
-        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("beer/{beerId}")
