@@ -122,6 +122,7 @@ public class BeerServiceImpl implements BeerService {
     @Override
     public Mono<Void> reactiveDeleteBeerId(Integer beerId) {
         return beerRepository.findById(beerId)
+                // findById throws NotFoundException first... that's why the test calls the throwable consumer
                 .switchIfEmpty(Mono.error(new NotFoundException()))
                 .map(beer -> {
                     return beer.getId();
