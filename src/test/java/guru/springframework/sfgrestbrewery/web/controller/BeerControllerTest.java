@@ -37,6 +37,7 @@ public class BeerControllerTest {
     @BeforeEach
     void setUp() {
         validBeer = BeerDto.builder()
+                .id(13)
                 .beerName("Test beer")
                 .beerStyle("PALE_ALE")
                 .upc(BeerLoader.BEER_1_UPC)
@@ -45,7 +46,7 @@ public class BeerControllerTest {
 
     @Test
     void shouldGetABeerById() {
-        Integer beerId = 1;
+        Integer beerId = 9;
         given(beerService.getById(any(), any())).willReturn(Mono.just(validBeer));
 
         webTestClient.get()
@@ -89,6 +90,13 @@ public class BeerControllerTest {
     @Test
     void shouldCreateNewBeer() {
         final var idCreatedBeer = 1;
+        final var createBear = BeerDto.builder()
+                .price(validBeer.getPrice())
+                .beerName(validBeer.getBeerName())
+                .beerStyle(validBeer.getBeerStyle())
+                .upc(validBeer.getUpc())
+                .build();
+
         final var createdBear = BeerDto.builder()
                 .id(idCreatedBeer)
                 .price(validBeer.getPrice())
@@ -96,12 +104,13 @@ public class BeerControllerTest {
                 .beerStyle(validBeer.getBeerStyle())
                 .upc(validBeer.getUpc())
                 .build();
-        given(beerService.saveNewBeer(validBeer)).willReturn(Mono.just(createdBear));
+
+        given(beerService.saveNewBeer(createBear)).willReturn(Mono.just(createdBear));
 
         webTestClient.post()
                 .uri("/api/v1/beer")
                 .accept(MediaType.APPLICATION_JSON)
-                .body(BodyInserters.fromValue(validBeer))
+                .body(BodyInserters.fromValue(createBear))
                 .exchange()
                 .expectStatus().isCreated()
                 .expectHeader()
@@ -110,14 +119,22 @@ public class BeerControllerTest {
 
     @Test
     void shouldUpdateBeer() {
-        final var idUpdatedBeer = 1;
+        final var idUpdatedBeer = 8;
         final var beerToUpdate = BeerDto.builder()
+                .price(validBeer.getPrice())
+                .beerName(validBeer.getBeerName())
+                .beerStyle(validBeer.getBeerStyle())
+                .upc(validBeer.getUpc())
+                .build();
+
+        final var updatedBeer = BeerDto.builder()
+                .id(idUpdatedBeer)
                 .price(validBeer.getPrice())
                 .beerName(validBeer.getBeerName() + ":updated")
                 .beerStyle(validBeer.getBeerStyle())
                 .upc(validBeer.getUpc())
                 .build();
-        given(beerService.updateBeer(idUpdatedBeer, beerToUpdate)).willReturn(Mono.just(beerToUpdate));
+        given(beerService.updateBeer(idUpdatedBeer, beerToUpdate)).willReturn(Mono.just(updatedBeer));
 
         webTestClient.put()
                 .uri("/api/v1/beer/" + idUpdatedBeer)
